@@ -19,6 +19,10 @@ app.get('/dashboard', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'main.html'));
 });
 
+app.get('/ticket.html', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'ticket.html'));
+});
+
 app.use('/api', allRoutes);
 
 
