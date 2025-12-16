@@ -111,8 +111,14 @@
 
     <script>
         const urlParams = new URLSearchParams(window.location.search);
+        
+        // --- DEBUGGING ---
+        console.log("Page loaded. Raw query string:", window.location.search);
         const secretCode = urlParams.get('code');
         const spotNumber = urlParams.get('spot');
+        console.log("Parsed secretCode:", secretCode);
+        console.log("Parsed spotNumber:", spotNumber);
+        // --- END DEBUGGING ---
 
         const spotNumberEl = document.getElementById('spot-number');
         const secretCodeEl = document.getElementById('secret-code');
@@ -127,28 +133,35 @@
 
         async function initialize() {
             if (!secretCode || !spotNumber) {
-                document.body.innerHTML = '<h1>Error: Missing ticket information.</h1>';
+                document.body.innerHTML = '<h1>Error: Missing ticket information in URL.</h1>';
+                console.error("Initialization failed: secretCode or spotNumber is missing.");
                 return;
             }
             spotNumberEl.textContent = spotNumber;
             secretCodeEl.textContent = secretCode;
 
-            // Fetch ticket details to get entry time
-            const res = await fetch('/api/check-price', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: secretCode })
-            });
-            const data = await res.json();
-            if (data.success) {
-                // This is a bit of a hack. The API returns the time since entry. 
-                // We subtract that from 'now' to get an approximate entry time.
-                // A better API would return the entry timestamp directly.
-                const hoursSinceEntry = data.hours;
-                entryTime = new Date(Date.now() - hoursSinceEntry * 3600 * 1000);
-                startTimer();
-            } else {
-                timerEl.textContent = "Could not load timer."
+            try {
+                const res = await fetch('/api/check-price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: secretCode })
+                });
+                if (!res.ok) {
+                    throw new Error(`API error: ${res.status} ${res.statusText}`);
+                }
+                const data = await res.json();
+                if (data.success) {
+                    // This is a bit of a hack. A better API would return the entry timestamp directly.
+                    const hoursSinceEntry = data.hours;
+                    entryTime = new Date(Date.now() - hoursSinceEntry * 3600 * 1000);
+                    startTimer();
+                } else {
+                    timerEl.textContent = "Could not load timer."
+                    console.error("API check-price was not successful:", data.message);
+                }
+            } catch (error) {
+                console.error("Failed to fetch initial ticket details:", error);
+                timerEl.textContent = "Error loading timer.";
             }
         }
 
@@ -165,55 +178,71 @@
         }
 
         btnCheckPrice.addEventListener('click', async () => {
-            const res = await fetch('/api/check-price', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: secretCode })
-            });
-            const data = await res.json();
-            if (data.success) {
-                totalHoursEl.textContent = data.hours;
-                totalPriceEl.textContent = data.price;
-                priceResultEl.classList.remove('hidden');
-            } else {
-                alert(data..message);
+            console.log("Check Price button clicked.");
+            try {
+                const res = await fetch('/api/check-price', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: secretCode })
+                });
+                if (!res.ok) throw new Error(`API error: ${res.status}`);
+                const data = await res.json();
+                console.log("Check price response:", data);
+                if (data.success) {
+                    totalHoursEl.textContent = data.hours;
+                    totalPriceEl.textContent = data.price;
+                    priceResultEl.classList.remove('hidden');
+                } else {
+                    alert(data.message);
+                }
+            } catch (error) {
+                console.error("Error during check price:", error);
+                alert("Could not check price. See console for details.");
             }
         });
 
         btnExit.addEventListener('click', async () => {
-            // First, get the final price
-            const priceCheckRes = await fetch('/api/check-price', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ code: secretCode })
-            });
-            const priceData = await priceCheckRes.json();
-
-            if (!priceData.success) {
-                alert(priceData.message);
-                return;
-            }
-
-            // Confirm payment
-            const confirmExit = confirm(`Your total is $${priceData.price}. Do you want to pay and exit?`);
-            if (confirmExit) {
-                const exitRes = await fetch('/api/exit', {
+            console.log("Pay & Exit button clicked.");
+            try {
+                const priceCheckRes = await fetch('/api/check-price', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ code: secretCode, price: priceData.price })
+                    body: JSON.stringify({ code: secretCode })
                 });
-                const exitData = await exitRes.json();
-                if (exitData.success) {
-                    document.body.innerHTML = `
-                        <div class="ticket-container">
-                            <h1>Thank You!</h1>
-                            <p>You have successfully exited Spot ${spotNumber}.</p>
-                            <p><a href="/">Back to Dashboard</a></p>
-                        </div>
-                    `;
-                } else {
-                    alert('Error during exit: ' + exitData.message);
+                if (!priceCheckRes.ok) throw new Error(`Price check API error: ${priceCheckRes.status}`);
+                const priceData = await priceCheckRes.json();
+                console.log("Exit flow price check response:", priceData);
+
+                if (!priceData.success) {
+                    alert(priceData.message);
+                    return;
                 }
+
+                const confirmExit = confirm(`Your total is $${priceData.price}. Do you want to pay and exit?`);
+                if (confirmExit) {
+                    const exitRes = await fetch('/api/exit', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ code: secretCode, price: priceData.price })
+                    });
+                    if (!exitRes.ok) throw new Error(`Exit API error: ${exitRes.status}`);
+                    const exitData = await exitRes.json();
+                    console.log("Exit response:", exitData);
+                    if (exitData.success) {
+                        document.body.innerHTML = `
+                            <div class="ticket-container">
+                                <h1>Thank You!</h1>
+                                <p>You have successfully exited Spot ${spotNumber}.</p>
+                                <p><a href="/">Back to Dashboard</a></p>
+                            </div>
+                        `;
+                    } else {
+                        alert('Error during exit: ' + exitData.message);
+                    }
+                }
+            } catch (error) {
+                console.error("Error during exit flow:", error);
+                alert("Could not exit. See console for details.");
             }
         });
 
