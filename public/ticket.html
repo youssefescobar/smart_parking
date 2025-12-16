@@ -105,7 +105,7 @@
 
         <div id="price-result" class="hidden">
             <p>Total Hours: <span id="total-hours"></span></p>
-            <p><strong>Total Price: $<span id="total-price"></span></strong></p>
+            <p><strong>Total Price: <span id="total-price"></span> EGP</strong></p>
         </div>
     </div>
 
@@ -151,9 +151,8 @@
                 }
                 const data = await res.json();
                 if (data.success) {
-                    // This is a bit of a hack. A better API would return the entry timestamp directly.
-                    const hoursSinceEntry = data.hours;
-                    entryTime = new Date(Date.now() - hoursSinceEntry * 3600 * 1000);
+                    // Use the precise entry time from the API
+                    entryTime = new Date(data.entryTime);
                     startTimer();
                 } else {
                     timerEl.textContent = "Could not load timer."
@@ -167,14 +166,20 @@
 
         function startTimer() {
             if(!entryTime) return;
-            setInterval(() => {
-                const now = new Date();
-                const elapsedMs = now - entryTime;
-                const hours = Math.floor(elapsedMs / 3600000).toString().padStart(2, '0');
-                const minutes = Math.floor((elapsedMs % 3600000) / 60000).toString().padStart(2, '0');
-                const seconds = Math.floor((elapsedMs % 60000) / 1000).toString().padStart(2, '0');
-                timerEl.textContent = `${hours}:${minutes}:${seconds}`;
-            }, 1000);
+            // Set the timer immediately, don't wait 1 second
+            updateTimer(); 
+            setInterval(updateTimer, 1000);
+        }
+
+        function updateTimer() {
+            const now = new Date();
+            const elapsedMs = now - entryTime;
+            // Make sure elapsedMs is not negative
+            const nonNegativeElapsedMs = Math.max(0, elapsedMs);
+            const hours = Math.floor(nonNegativeElapsedMs / 3600000).toString().padStart(2, '0');
+            const minutes = Math.floor((nonNegativeElapsedMs % 3600000) / 60000).toString().padStart(2, '0');
+            const seconds = Math.floor((nonNegativeElapsedMs % 60000) / 1000).toString().padStart(2, '0');
+            timerEl.textContent = `${hours}:${minutes}:${seconds}`;
         }
 
         btnCheckPrice.addEventListener('click', async () => {
@@ -218,7 +223,7 @@
                     return;
                 }
 
-                const confirmExit = confirm(`Your total is $${priceData.price}. Do you want to pay and exit?`);
+                const confirmExit = confirm(`Your total is ${priceData.price} EGP. Do you want to pay and exit?`);
                 if (confirmExit) {
                     const exitRes = await fetch('/api/exit', {
                         method: 'POST',

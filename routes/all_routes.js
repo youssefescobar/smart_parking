@@ -98,13 +98,15 @@ router.post('/check-price', async (req, res) => {
 
     // Calculate time diff
     const now = new Date();
-    const diffHours = Math.abs(now - ticket.entryTime) / 36e5; // Convert ms to hours
-    const billableHours = Math.max(1, Math.ceil(diffHours)); // Min 1 hour, round up
+    const diffMs = Math.abs(now - ticket.entryTime);
+    const diffHours = diffMs / 36e5; // Convert ms to hours
+    const billableHours = Math.ceil(diffHours); // Round up to the next hour
     const price = billableHours * HOURLY_RATE;
 
     res.json({
         success: true,
         spot: ticket.spotNumber,
+        entryTime: ticket.entryTime, // Send the exact entry time
         hours: billableHours,
         price: price
     });
