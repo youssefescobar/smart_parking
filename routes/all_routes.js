@@ -138,8 +138,6 @@ router.get('/spots', async (req, res) => {
     }
 });
 
-const qrcode = require('qrcode');
-
 // E. DYNAMIC QR CODE GENERATION
 router.get('/qrcode/:spotId', async (req, res) => {
     const { spotId } = req.params;
