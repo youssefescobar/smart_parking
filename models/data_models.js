@@ -5,7 +5,8 @@ const mongoose = require('mongoose');
 // Schema for the physical parking spot
 const SpotSchema = new mongoose.Schema({
     number: { type: String, unique: true, required: true },
-    isOccupied: { type: Boolean, default: false }
+    isOccupied: { type: Boolean, default: false }, // Means "Ticket Active"
+    isSensorDetecting: { type: Boolean, default: false } // NEW: Means "Car Physically There"
 });
 
 // Schema for the parking session (Ticket)

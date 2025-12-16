@@ -14,6 +14,20 @@ router.get('/enter/:spotId', async (req, res) => {
         const spot = await Spot.findOne({ number: spotId });
         
         if (!spot) return res.send('<h1>Error: Spot does not exist.</h1>');
+        if (!spot) return res.send('<h1>Error: Spot does not exist.</h1>');
+
+// --- NEW CHECK START ---
+// If the sensor does NOT see a car, block the ticket
+        if (spot.isSensorDetecting === false) {
+            return res.send(`
+        <div style="font-family: sans-serif; text-align: center; padding: 2rem; background-color: #fff3cd; border: 1px solid #ffeeba;">
+            <h1 style="color: #856404;">⚠️ Car Not Detected</h1>
+            <p style="font-size: 1.2rem;">We cannot issue a ticket because the sensor does not see your car.</p>
+            <p><strong>Please park your car inside Spot ${spotId} fully, then scan the code again.</strong></p>
+            <button onclick="window.location.reload()" style="padding: 10px 20px; font-size: 1rem; cursor: pointer; margin-top: 15px;">I have parked, Try Again</button>
+        </div>
+    `);
+}
         if (spot.isOccupied) {
             return res.send(`
                 <div style="font-family: sans-serif; text-align: center; padding: 2rem;">
@@ -161,6 +175,24 @@ router.get('/qrcode/:spotId', async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).send('Could not generate QR code');
+    }
+});
+
+router.post('/sensor/update', async (req, res) => {
+    const { spotNumber, isCarPresent } = req.body;
+
+    try {
+        const spot = await Spot.findOne({ number: spotNumber });
+        if (!spot) return res.status(404).json({ error: 'Spot not found' });
+
+        spot.isSensorDetecting = isCarPresent;
+        await spot.save();
+
+        console.log(`Sensor Update: Spot ${spotNumber} is now ${isCarPresent ? 'PHYSICALLY OCCUPIED' : 'EMPTY'}`);
+        res.json({ success: true });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: 'Server error' });
     }
 });
 
