@@ -1,6 +1,7 @@
 const router = require('express').Router();
 const crypto = require('crypto');
 const { Spot, Ticket } = require('../models/data_models');
+const qrcode = require('qrcode');
 
 // --- 4. ROUTES ---
 
@@ -76,20 +77,11 @@ router.get('/enter/:spotId', async (req, res) => {
         spot.isOccupied = true;
         await spot.save();
 
-        // Send HTML response directly to phone
-        res.send(`
-            <div style="font-family: sans-serif; text-align: center; padding: 2rem;">
-                <h1>🚗 Welcome to Spot ${spotId}</h1>
-                <p>Your parking timer has started.</p>
-                <div style="background: #f0f0f0; padding: 20px; border-radius: 10px; margin: 20px 0;">
-                    <p>YOUR EXIT CODE:</p>
-                    <h2 style="font-size: 3rem; margin: 0; color: #007bff; letter-spacing: 5px;">${secretCode}</h2>
-                </div>
-                <p><strong>Do not close this tab</strong> or take a screenshot. You need this code to exit.</p>
-            </div>
-        `);
+        // Redirect to the ticket page with the secret code
+        res.redirect(`/ticket.html?code=${secretCode}&spot=${spotId}`);
 
     } catch (err) {
+        console.error(err); // Log the error for debugging
         res.status(500).send('Server Error');
     }
 });
@@ -143,6 +135,30 @@ router.get('/spots', async (req, res) => {
         res.json(spots);
     } catch (err) {
         res.status(500).send('Server Error');
+    }
+});
+
+const qrcode = require('qrcode');
+
+// E. DYNAMIC QR CODE GENERATION
+router.get('/qrcode/:spotId', async (req, res) => {
+    const { spotId } = req.params;
+    // You might want to get the base URL dynamically in a real app
+    const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
+    const url = `${vercelUrl}/api/enter/${spotId}`;
+
+    try {
+        res.setHeader('Content-Type', 'image/png');
+        qrcode.toFileStream(res, url, {
+            color: {
+                dark: '#000000',
+                light: '#FFFFFF'
+            },
+            width: 300
+        });
+    } catch (err) {
+        console.error(err);
+        res.status(500).send('Could not generate QR code');
     }
 });
 

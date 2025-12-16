@@ -1,0 +1,223 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Your Parking Ticket</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f2f5;
+            color: #333;
+        }
+        .ticket-container {
+            text-align: center;
+            background: #fff;
+            padding: 2rem 3rem;
+            border-radius: 15px;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+            max-width: 400px;
+            width: 90%;
+        }
+        h1 {
+            color: #007bff;
+            margin-bottom: 0.5rem;
+        }
+        p {
+            margin: 0.5rem 0;
+            font-size: 1.1rem;
+        }
+        .code-display {
+            background: #e9ecef;
+            padding: 1rem;
+            border-radius: 8px;
+            margin: 1.5rem 0;
+        }
+        .code-display p {
+            margin: 0;
+            font-size: 1rem;
+            color: #555;
+        }
+        .code-display h2 {
+            font-size: 3.5rem;
+            margin: 0.5rem 0 0;
+            color: #dc3545;
+            letter-spacing: 4px;
+        }
+        .timer {
+            font-size: 1.5rem;
+            font-weight: bold;
+            color: #28a745;
+            margin-bottom: 1.5rem;
+        }
+        .actions button {
+            padding: 12px 25px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background-color 0.3s, transform 0.2s;
+            margin: 0 10px;
+        }
+        .actions button:hover {
+            transform: translateY(-2px);
+        }
+        #btn-check-price {
+            background-color: #ffc107;
+            color: #333;
+        }
+        #btn-exit {
+            background-color: #dc3545;
+            color: #fff;
+        }
+        .hidden {
+            display: none;
+        }
+        #price-result {
+            margin-top: 1.5rem;
+            background: #f8f9fa;
+            padding: 1rem;
+            border-radius: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="ticket-container">
+        <h1>Spot <span id="spot-number"></span></h1>
+        <p>Your parking session is active.</p>
+
+        <div class="code-display">
+            <p>YOUR SECRET CODE:</p>
+            <h2 id="secret-code"></h2>
+        </div>
+
+        <div class="timer" id="timer">00:00:00</div>
+
+        <div class="actions">
+            <button id="btn-check-price">Check Price</button>
+            <button id="btn-exit">Pay & Exit</button>
+        </div>
+
+        <div id="price-result" class="hidden">
+            <p>Total Hours: <span id="total-hours"></span></p>
+            <p><strong>Total Price: $<span id="total-price"></span></strong></p>
+        </div>
+    </div>
+
+    <script>
+        const urlParams = new URLSearchParams(window.location.search);
+        const secretCode = urlParams.get('code');
+        const spotNumber = urlParams.get('spot');
+
+        const spotNumberEl = document.getElementById('spot-number');
+        const secretCodeEl = document.getElementById('secret-code');
+        const timerEl = document.getElementById('timer');
+        const priceResultEl = document.getElementById('price-result');
+        const totalHoursEl = document.getElementById('total-hours');
+        const totalPriceEl = document.getElementById('total-price');
+        const btnCheckPrice = document.getElementById('btn-check-price');
+        const btnExit = document.getElementById('btn-exit');
+
+        let entryTime; 
+
+        async function initialize() {
+            if (!secretCode || !spotNumber) {
+                document.body.innerHTML = '<h1>Error: Missing ticket information.</h1>';
+                return;
+            }
+            spotNumberEl.textContent = spotNumber;
+            secretCodeEl.textContent = secretCode;
+
+            // Fetch ticket details to get entry time
+            const res = await fetch('/api/check-price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: secretCode })
+            });
+            const data = await res.json();
+            if (data.success) {
+                // This is a bit of a hack. The API returns the time since entry. 
+                // We subtract that from 'now' to get an approximate entry time.
+                // A better API would return the entry timestamp directly.
+                const hoursSinceEntry = data.hours;
+                entryTime = new Date(Date.now() - hoursSinceEntry * 3600 * 1000);
+                startTimer();
+            } else {
+                timerEl.textContent = "Could not load timer."
+            }
+        }
+
+        function startTimer() {
+            if(!entryTime) return;
+            setInterval(() => {
+                const now = new Date();
+                const elapsedMs = now - entryTime;
+                const hours = Math.floor(elapsedMs / 3600000).toString().padStart(2, '0');
+                const minutes = Math.floor((elapsedMs % 3600000) / 60000).toString().padStart(2, '0');
+                const seconds = Math.floor((elapsedMs % 60000) / 1000).toString().padStart(2, '0');
+                timerEl.textContent = `${hours}:${minutes}:${seconds}`;
+            }, 1000);
+        }
+
+        btnCheckPrice.addEventListener('click', async () => {
+            const res = await fetch('/api/check-price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: secretCode })
+            });
+            const data = await res.json();
+            if (data.success) {
+                totalHoursEl.textContent = data.hours;
+                totalPriceEl.textContent = data.price;
+                priceResultEl.classList.remove('hidden');
+            } else {
+                alert(data..message);
+            }
+        });
+
+        btnExit.addEventListener('click', async () => {
+            // First, get the final price
+            const priceCheckRes = await fetch('/api/check-price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: secretCode })
+            });
+            const priceData = await priceCheckRes.json();
+
+            if (!priceData.success) {
+                alert(priceData.message);
+                return;
+            }
+
+            // Confirm payment
+            const confirmExit = confirm(`Your total is $${priceData.price}. Do you want to pay and exit?`);
+            if (confirmExit) {
+                const exitRes = await fetch('/api/exit', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ code: secretCode, price: priceData.price })
+                });
+                const exitData = await exitRes.json();
+                if (exitData.success) {
+                    document.body.innerHTML = `
+                        <div class="ticket-container">
+                            <h1>Thank You!</h1>
+                            <p>You have successfully exited Spot ${spotNumber}.</p>
+                            <p><a href="/">Back to Dashboard</a></p>
+                        </div>
+                    `;
+                } else {
+                    alert('Error during exit: ' + exitData.message);
+                }
+            }
+        });
+
+        initialize();
+    </script>
+</body>
+</html>
