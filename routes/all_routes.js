@@ -141,9 +141,10 @@ router.get('/spots', async (req, res) => {
 // E. DYNAMIC QR CODE GENERATION
 router.get('/qrcode/:spotId', async (req, res) => {
     const { spotId } = req.params;
-    // You might want to get the base URL dynamically in a real app
-    const vercelUrl = process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000';
-    const url = `${vercelUrl}/api/enter/${spotId}`;
+    
+    // Use the public URL for production, fall back to Vercel's system URL, then localhost
+    const baseUrl = process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+    const url = `${baseUrl}/api/enter/${spotId}`;
 
     try {
         res.setHeader('Content-Type', 'image/png');
