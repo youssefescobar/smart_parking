@@ -14,7 +14,6 @@ router.get('/enter/:spotId', async (req, res) => {
         const spot = await Spot.findOne({ number: spotId });
         
         if (!spot) return res.send('<h1>Error: Spot does not exist.</h1>');
-        if (!spot) return res.send('<h1>Error: Spot does not exist.</h1>');
 
 // --- NEW CHECK START ---
 // If the sensor does NOT see a car, block the ticket

@@ -105,13 +105,24 @@ void sendUpdate(String spot, bool status) {
 
     int httpResponseCode = http.POST(jsonPayload);
 
-    if (httpResponseCode > 0) {
-      // Success
+    // Check for a successful response (2xx)
+    if (httpResponseCode >= 200 && httpResponseCode < 300) {
+      String payload = http.getString();
+      Serial.print("Success sending POST for ");
+      Serial.print(spot);
+      Serial.print(". Server response: ");
+      Serial.println(payload);
     } else {
       Serial.print("Error sending POST for ");
       Serial.print(spot);
-      Serial.print(": ");
+      Serial.print(". HTTP code: ");
       Serial.println(httpResponseCode);
+      // Try to get the error response from the server, if any
+      String payload = http.getString();
+      if (payload.length() > 0) {
+        Serial.print("Server error payload: ");
+        Serial.println(payload);
+      }
     }
     http.end();
   } else {
