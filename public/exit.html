@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manual Parking Exit</title>
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; margin: 0; background: #f4f4f9; }
+        .card { background: white; padding: 2rem; border-radius: 12px; box-shadow: 0 4px 6px rgba(0,0,0,0.1); text-align: center; width: 300px; }
+        input { width: 100%; padding: 10px; margin: 10px 0; font-size: 1.2rem; text-align: center; letter-spacing: 2px; text-transform: uppercase; }
+        button { width: 100%; padding: 10px; background: #007bff; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 1rem; }
+        button:hover { background: #0056b3; }
+        .price-box { display: none; margin-top: 20px; border-top: 1px solid #ddd; padding-top: 10px; }
+        .hidden { display: none; }
+        .home-link { margin-top: 1.5rem; }
+        .home-link a { text-decoration: none; color: #007bff; }
+        .home-link a:hover { text-decoration: underline; }
+    </style>
+</head>
+<body>
+
+    <div class="card">
+        <h2>🅿️ Manual Parking Exit</h2>
+        <p>Enter the code you received upon entry.</p>
+        
+        <input type="text" id="codeInput" placeholder="CODE" maxlength="6">
+        <button onclick="checkPrice()">Calculate Fee</button>
+
+        <div id="priceBox" class="price-box">
+            <h3 id="spotDisplay"></h3>
+            <p>Duration: <span id="durationDisplay"></span> hrs</p>
+            <h1 style="color: green;">$<span id="priceDisplay"></span></h1>
+            <button onclick="payAndExit()" style="background: #28a745;">PAY & OPEN GATE</button>
+        </div>
+
+        <div class="home-link">
+            <a href="/">View All Spots</a>
+        </div>
+    </div>
+
+    <script>
+        let currentPrice = 0;
+
+        async function checkPrice() {
+            const code = document.getElementById('codeInput').value;
+            const res = await fetch('/api/check-price', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code })
+            });
+            const data = await res.json();
+
+            if (data.success) {
+                document.getElementById('priceBox').style.display = 'block';
+                document.getElementById('spotDisplay').innerText = `Spot: ${data.spot}`;
+                document.getElementById('durationDisplay').innerText = data.hours;
+                document.getElementById('priceDisplay').innerText = data.price;
+                currentPrice = data.price;
+            } else {
+                alert(data.message);
+            }
+        }
+
+        async function payAndExit() {
+            const code = document.getElementById('codeInput').value;
+            const res = await fetch('/api/exit', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code, price: currentPrice })
+            });
+            const data = await res.json();
+            
+            if (data.success) {
+                alert("✅ PAYMENT SUCCESSFUL. GATE OPENING...");
+                location.reload();
+            } else {
+                alert("Error processing payment.");
+            }
+        }
+    </script>
+</body>
+</html>

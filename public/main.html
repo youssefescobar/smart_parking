@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Parking - Available Spots</title>
+    <style>
+        body { font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background-color: #f4f4f9; }
+        h1 { color: #333; }
+        #spots-container { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; padding: 20px; }
+        .spot {
+            width: 150px;
+            height: 150px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            border-radius: 10px;
+            color: white;
+            font-size: 2rem;
+            font-weight: bold;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .spot:hover { transform: scale(1.05); }
+        .spot.available { background-color: #28a745; }
+        .spot.occupied { background-color: #dc3545; }
+        .spot-status { font-size: 1rem; margin-top: 10px; }
+    </style>
+</head>
+<body>
+    <h1>Available Parking Spots</h1>
+    <div id="spots-container"></div>
+
+    <script>
+        async function fetchSpots() {
+            try {
+                const response = await fetch('/api/spots');
+                const spots = await response.json();
+                const container = document.getElementById('spots-container');
+                container.innerHTML = ''; 
+
+                spots.forEach(spot => {
+                    const spotDiv = document.createElement('div');
+                    spotDiv.classList.add('spot');
+                    if (spot.isOccupied) {
+                        spotDiv.classList.add('occupied');
+                        spotDiv.innerHTML = `<div>${spot.number}</div><div class="spot-status">Occupied</div>`;
+                    } else {
+                        spotDiv.classList.add('available');
+                        spotDiv.innerHTML = `<div>${spot.number}</div><div class="spot-status">Available</div>`;
+                    }
+                    container.appendChild(spotDiv);
+                });
+            } catch (error) {
+                console.error('Failed to fetch spots:', error);
+                document.getElementById('spots-container').innerHTML = '<p>Error loading spots. Please try again later.</p>';
+            }
+        }
+
+        
+        fetchSpots();
+        setInterval(fetchSpots, 5000); // Refresh every 5 seconds
+    </script>
+</body>
+</html>
