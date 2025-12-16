@@ -14,6 +14,11 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 app.use(express.static('public', { index: 'main.html' })); 
+
+app.get('/dashboard', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'main.html'));
+});
+
 app.use('/api', allRoutes);
 
 
