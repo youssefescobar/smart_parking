@@ -77,8 +77,9 @@ router.get('/enter/:spotId', async (req, res) => {
         spot.isOccupied = true;
         await spot.save();
 
-        // Redirect to the ticket page with the secret code
-        res.redirect(`/ticket.html?code=${secretCode}&spot=${spotId}`);
+        // Redirect to the ticket page with the secret code using an absolute URL
+        const baseUrl = process.env.PUBLIC_URL || (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+        res.redirect(`${baseUrl}/ticket.html?code=${secretCode}&spot=${spotId}`);
 
     } catch (err) {
         console.error(err); // Log the error for debugging
